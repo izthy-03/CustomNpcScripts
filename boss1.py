@@ -32,13 +32,6 @@ def targetLost(c):
 
 
 class Entity:
-    # # 定义Timer
-    # Timer = None
-    # # 将自己定义的timer封装成字典
-    # timers = {}
-    # # 封装的customnpc接口
-    # c = None
-
     def __init__(self, _char):
         self.char = _char
         self.char.npc.say("Initialized!")
@@ -55,6 +48,9 @@ class Entity:
         self.Timer.add(self.timerInterval, 140, False)
         self.Timer.add(self.timerHang, 100, False)
 
+        self.GoldSword = _char.npc.world.createItem("minecraft:golden_sword", 0, 1)
+        self.Air = _char.npc.world.createItem("minecraft:air", 0, 1)
+
     def interact(self):
         pass
 
@@ -62,40 +58,29 @@ class Entity:
         self.skill_rage(timer_id)
 
     def target(self):
-        # self.timer_start("Alarm")
         self.Timer.start(self.timerAlarm)
-        self.char.npc.say("警告:即将发动技能“癫狂连击”")
-
+        # self.char.npc.say("警告:即将发动技能“癫狂连击”")
         # do something
 
     def targetLost(self):
-        # self.timer_start("TimeToHang")
         self.Timer.start(self.timerHang)
         # do something
-
-    # def timer_init(self):
-    #     # 获取接口的Timer
-    #     self.Timer = self.char.npc.getTimers()
-    #     # 封装为字典，第一个参数为timerId，第二个为持续时间，第三个为是否循环; 外层表示是否正在进行
-    #     self.timers["Alarm"] = [[1, 40, False], False]
-    #     self.timers["Duration"] = [[2, 60, False], False]
-    #     self.timers["Interval"] = [[3, 140, False], False]
-    #     self.timers["TimeToHang"] = [[4, 100, False], False]
 
     def strengthen(self):
         self.char.npc.stats.melee.setStrength(6)
         self.char.npc.stats.melee.setDelay(4)
+        self.char.npc.inventory.setLeftHand(self.GoldSword)
 
     def recover(self):
         self.char.npc.stats.melee.setStrength(7)
         self.char.npc.stats.melee.setDelay(16)
+        self.char.npc.inventory.setLeftHand(self.Air)
 
     def skill_rage(self, timer_id):
         # Alarm ends
         self.Timer.finish(timer_id)
         if timer_id == self.timerAlarm:
-            self.char.npc.say("发动技能“癫狂连击”")
-            # self.timer_start("Duration")
+            # self.char.npc.say("发动技能“癫狂连击”")
             self.Timer.start(self.timerDuration)
             # Strengthen
             self.strengthen()
@@ -108,7 +93,7 @@ class Entity:
 
         # Duration ends
         if timer_id == self.timerDuration:
-            self.char.npc.say("“癫狂连击”结束")
+            # self.char.npc.say("“癫狂连击”结束")
             if self.char.npc.isAttacking():
                 self.Timer.start(self.timerInterval)
             self.recover()
@@ -118,14 +103,6 @@ class Entity:
             if not self.char.npc.isAttacking:
                 self.recover()
                 self.Timer.clear()
-
-    # 调试函数
-    # def show(self):
-    #     print(dir(self.c.npc))
-    #
-    # def timer_test(self):
-    #     self.c.npc.say('timer test')
-    #     self.Timer.start(*self.timers['timer1'])
 
 
 class MyTimer:
