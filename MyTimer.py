@@ -15,3 +15,12 @@ class MyTimer:
 
     def finish(self, timerId: int):
         self.isRunning[timerId] = False
+
+    def stop(self, timerId: int):
+        self.Timer.stop(timerId)
+        self.isRunning[timerId] = False
+
+    def clear(self):
+        self.Timer.clear()
+        for i in range(0, len(self.isRunning)):
+            self.isRunning[i] = False
