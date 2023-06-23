@@ -42,11 +42,14 @@ class Entity:
         # define timerId
         self.timerInterval = 3
         self.timerAlarm = 1
-        self.timerHang = 4
+        self.timerCheck = 4
 
-        self.Timer.add(self.timerAlarm, 10, False)
+        self.Timer.add(self.timerAlarm, 13, False)
         self.Timer.add(self.timerInterval, 100, False)
-        self.Timer.add(self.timerHang, 100, False)
+        self.Timer.add(self.timerCheck, 107, True)
+
+        self.Timer.stop(self.timerCheck)
+        self.Timer.start(self.timerCheck)
 
         self.skillRange = 9
 
@@ -56,9 +59,16 @@ class Entity:
         pass
 
     def timer(self, timer_id):
-        if timer_id == self.timerHang and not self.char.npc.isAttacking:
-            self.Timer.clear()
-            self.reset()
+        self.Timer.finish(timer_id)
+
+        if timer_id == self.timerCheck:
+            # self.char.npc.say("check " + str(self.char.npc.isAttacking()))
+
+            if not self.char.npc.isAttacking():
+                # self.char.npc.say("clear")
+                self.Timer.clear()
+                self.Timer.start(self.timerCheck)
+                self.reset()
         else:
             self.skill(timer_id)
 
@@ -67,11 +77,10 @@ class Entity:
 
     def targetLost(self):
         # 5秒待机，防止切换仇恨时技能重置
-        self.Timer.start(self.timerHang)
+        # self.Timer.start(self.timerHang)
+        pass
 
     def skill(self, timer_id):
-        self.Timer.finish(timer_id)
-
         if timer_id == self.timerAlarm:
             self.quake()
             self.Timer.start(self.timerInterval)
