@@ -1,3 +1,5 @@
+import math
+
 # 定义测试npc
 test = None
 
@@ -70,6 +72,7 @@ class Entity:
         self.char.npc.stats.melee.setStrength(6)
         self.char.npc.stats.melee.setDelay(4)
         self.char.npc.inventory.setLeftHand(self.GoldSword)
+        self.circleExplode(1, "lava")
 
     def recover(self):
         self.char.npc.stats.melee.setStrength(7)
@@ -100,9 +103,21 @@ class Entity:
 
         # Hang ends
         if timer_id == self.timerHang:
-            if not self.char.npc.isAttacking:
+            if not self.char.npc.isAttacking():
                 self.recover()
                 self.Timer.clear()
+
+    def circleExplode(self, radius, particle):
+        thisX = self.char.npc.getX()
+        thisY = self.char.npc.getY()
+        thisZ = self.char.npc.getZ()
+        for i in range(0, 360, 5):
+            rad = i * math.pi / 180
+            dx = math.cos(rad)
+            dz = math.sin(rad)
+            self.char.npc.world.spawnParticle(
+                particle, thisX, thisY + 1, thisZ, dx, 0, dz, 0.01, 5
+            )
 
 
 class MyTimer:
