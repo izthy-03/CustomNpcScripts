@@ -1,3 +1,5 @@
+import math
+
 # 定义测试npc
 test = None
 
@@ -40,28 +42,30 @@ class Entity:
         # define timerId
         self.timerInterval = 3
         self.timerAlarm = 1
+        self.timerHang = 4
 
-        self.Timer.add(self.timerAlarm, 20, False)
-        self.Timer.add(self.timerInterval, 100, False)
+        self.Timer.add(self.timerAlarm, 40, False)
+        self.Timer.add(self.timerInterval, 20, False)
+        self.Timer.add(self.timerHang, 100, False)
+
+        print(dir(self.char.npc))
 
     def interact(self):
         pass
 
     def timer(self, timer_id):
-        self.skill(timer_id)
+        if timer_id == self.timerHang:
+            self.Timer.clear()
+            self.reset()
+        else:
+            self.skill(timer_id)
 
     def target(self):
-        # self.timer_start("Alarm")
         self.Timer.start(self.timerInterval)
-        # self.char.npc.say("警告:即将发动技能“癫狂连击”")
-
-        # do something
 
     def targetLost(self):
-        # self.timer_start("TimeToHang")
+        # 5秒待机，防止切换仇恨时技能重置
         self.Timer.start(self.timerHang)
-        self.Timer.clear()
-        # do something
 
     def skill(self, timer_id):
         self.Timer.finish(timer_id)
@@ -71,10 +75,55 @@ class Entity:
             self.Timer.start(self.timerInterval)
 
         if timer_id == self.timerInterval:
+            self.prepare()
             self.Timer.start(self.timerAlarm)
 
+    def prepare(self):
+        # self.char.npc.playAnimation(0)
+        self.char.npc.addPotionEffect(2, 9999, 255, False)
+        self.circle(7, "largesmoke")
+
     def quake(self):
-        pass
+        players = self.char.npc.world.getAllPlayers()
+        thisY = self.char.npc.getY()
+        thisPos = self.char.npc.getPos()
+        # self.char.npc.say("my Y = " + str(thisY))
+        self.circleExplode(7, "flame")
+        for player in players:
+            coordY = player.getY()
+            # name = player.getName()
+            # self.char.npc.say(name + " y = " + str(coordY))
+            distance = player.getPos().distanceTo(thisPos)
+            if abs(coordY - thisY) <= 0.92 and distance <= 7:
+                player.damage(15)
+
+        self.reset()
+
+    def reset(self):
+        self.char.npc.clearPotionEffects()
+
+    def circle(self, radius, particle):
+        thisX = self.char.npc.getX()
+        thisY = self.char.npc.getY()
+        thisZ = self.char.npc.getZ()
+        for i in range(0, 360, 5):
+            rad = i * math.pi / 180
+            px = radius * math.cos(rad) + thisX
+            pz = radius * math.sin(rad) + thisZ
+            py = thisY
+            self.char.npc.world.spawnParticle(particle, px, py, pz, 0, 0, 0, 0, 5)
+
+    def circleExplode(self, radius, particle):
+        thisX = self.char.npc.getX()
+        thisY = self.char.npc.getY()
+        thisZ = self.char.npc.getZ()
+        for i in range(0, 360, 5):
+            rad = i * math.pi / 180
+            dx = math.cos(rad)
+            dz = math.sin(rad)
+            self.char.npc.world.spawnParticle(
+                particle, thisX, thisY + 1, thisZ, dx, 0, dz, 0.5, 5
+            )
 
 
 class MyTimer:
