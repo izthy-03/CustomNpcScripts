@@ -56,7 +56,7 @@ class Entity:
         pass
 
     def timer(self, timer_id):
-        if timer_id == self.timerHang:
+        if timer_id == self.timerHang and not self.char.npc.isAttacking:
             self.Timer.clear()
             self.reset()
         else:
