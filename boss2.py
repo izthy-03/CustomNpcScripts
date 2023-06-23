@@ -44,11 +44,11 @@ class Entity:
         self.timerAlarm = 1
         self.timerHang = 4
 
-        self.Timer.add(self.timerAlarm, 40, False)
-        self.Timer.add(self.timerInterval, 20, False)
+        self.Timer.add(self.timerAlarm, 10, False)
+        self.Timer.add(self.timerInterval, 100, False)
         self.Timer.add(self.timerHang, 100, False)
 
-        self.skillRange = 7
+        self.skillRange = 9
 
         # print(dir(self.char.npc))
 
