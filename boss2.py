@@ -48,7 +48,9 @@ class Entity:
         self.Timer.add(self.timerInterval, 20, False)
         self.Timer.add(self.timerHang, 100, False)
 
-        print(dir(self.char.npc))
+        self.skillRange = 7
+
+        # print(dir(self.char.npc))
 
     def interact(self):
         pass
@@ -81,20 +83,20 @@ class Entity:
     def prepare(self):
         # self.char.npc.playAnimation(0)
         self.char.npc.addPotionEffect(2, 9999, 255, False)
-        self.circle(7, "largesmoke")
+        self.circle(self.skillRange, "largesmoke")
 
     def quake(self):
         players = self.char.npc.world.getAllPlayers()
         thisY = self.char.npc.getY()
         thisPos = self.char.npc.getPos()
         # self.char.npc.say("my Y = " + str(thisY))
-        self.circleExplode(7, "flame")
+        self.circleExplode(self.skillRange, "flame")
         for player in players:
             coordY = player.getY()
             # name = player.getName()
             # self.char.npc.say(name + " y = " + str(coordY))
             distance = player.getPos().distanceTo(thisPos)
-            if abs(coordY - thisY) <= 0.92 and distance <= 7:
+            if abs(coordY - thisY) <= 0.92 and distance <= self.skillRange:
                 player.damage(15)
 
         self.reset()
