@@ -166,3 +166,6 @@ class MyTimer:
         self.Timer.clear()
         for i in range(0, len(self.isRunning)):
             self.isRunning[i] = False
+
+    def modify(self, timerId, ticks, repeat):
+        self.timers[timerId] = [timerId, ticks, repeat]
