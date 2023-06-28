@@ -80,9 +80,10 @@ class Entity:
         self.skill_rage(timer_id)
 
     def target(self):
-        self.Timer.start(self.timerAlarm)
+        # self.Timer.start(self.timerAlarm)
         # self.char.npc.say("警告:即将发动技能“癫狂连击”")
         # do something
+        pass
 
     def targetLost(self):
         # self.Timer.start(self.timerHang)
@@ -227,15 +228,23 @@ class SkillTree:
             # reach leaf
             if 0 == len(nowSkill.child):
                 nowSkill = self.root
-
+            flag = False
             for child in nowSkill.child:
                 if child.skillCond():
                     time.sleep(child.skillPrev())
                     if child.skillCond():
                         child.skillEffect()
                         time.sleep(child.skillDuration())
-                        nowSkill = child
+                        if child.skillCond():
+                            nowSkill = child
+                        else:
+                            nowSkill = self.root
+                            self.reset()
                     else:
                         nowSkill = self.root
                         self.reset()
+                    flag = True
                     break
+
+            if not flag:
+                nowSkill = self.root

@@ -54,15 +54,23 @@ class SkillTree:
             # reach leaf
             if 0 == len(nowSkill.child):
                 nowSkill = self.root
-
+            flag = False
             for child in nowSkill.child:
                 if child.skillCond():
                     time.sleep(child.skillPrev())
                     if child.skillCond():
                         child.skillEffect()
                         time.sleep(child.skillDuration())
-                        nowSkill = child
+                        if child.skillCond():
+                            nowSkill = child
+                        else:
+                            nowSkill = self.root
+                            self.reset()
                     else:
                         nowSkill = self.root
                         self.reset()
+                    flag = True
                     break
+
+            if not flag:
+                nowSkill = self.root
