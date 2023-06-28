@@ -1,8 +1,6 @@
 import threading
 import time
 
-import math
-
 # 定义测试npc
 test = None
 
@@ -40,7 +38,7 @@ class Entity:
     def __init__(self, _char):
         self.char = _char
         self.char.npc.say("Initialized!")
-        self.Timer = MyTimerThreading(self.timer)
+        self.Timer = MyTimerThreading(self.timer, self.char.npc)
 
         # define timerId
         self.timerAlarm = 1
@@ -71,60 +69,35 @@ class Entity:
         self.Timer.start(self.timerHang)
         # do something
 
-    def strengthen(self):
-        self.char.npc.stats.melee.setStrength(6)
-        self.char.npc.stats.melee.setDelay(4)
-        self.char.npc.inventory.setLeftHand(self.GoldSword)
-        self.circleExplode(1, "lava")
-
-    def recover(self):
-        self.char.npc.stats.melee.setStrength(7)
-        self.char.npc.stats.melee.setDelay(16)
-        self.char.npc.inventory.setLeftHand(self.Air)
-
     def skill_rage(self, timer_id):
         # Alarm ends
         # self.Timer.finish(timer_id)
         if timer_id == self.timerAlarm:
-            self.char.npc.say("start")
+            self.char.npc.say("raging")
             self.Timer.start(self.timerDuration)
             # Strengthen
-            self.strengthen()
 
         # Interval ends
         if timer_id == self.timerInterval:
-            # 偷懒直接调用target(),反正效果一样（逃
             if self.char.npc.isAttacking():
-                self.target()
+                self.Timer.start(self.timerAlarm)
+                self.char.npc.say("alarm")
 
         # Duration ends
         if timer_id == self.timerDuration:
             self.char.npc.say("stop")
             if self.char.npc.isAttacking():
                 self.Timer.start(self.timerInterval)
-            self.recover()
 
         # Hang ends
         if timer_id == self.timerHang:
             if not self.char.npc.isAttacking():
-                self.recover()
+                self.char.npc.say("start hanging")
                 self.Timer.stopAll()
-
-    def circleExplode(self, radius, particle):
-        thisX = self.char.npc.getX()
-        thisY = self.char.npc.getY()
-        thisZ = self.char.npc.getZ()
-        for i in range(0, 360, 5):
-            rad = i * math.pi / 180
-            dx = math.cos(rad)
-            dz = math.sin(rad)
-            self.char.npc.world.spawnParticle(
-                particle, thisX, thisY + 1, thisZ, dx, 0, dz, 0.01, 5
-            )
 
 
 class MyTimerThreading:
-    def __init__(self, callback):
+    def __init__(self, callback, npc):
         self.callback = callback
         self.map = {}
         self.timers = []
@@ -133,6 +106,8 @@ class MyTimerThreading:
         self.sems_start = []
         self.workertid = []
         self.tid = 0
+
+        self.npc = npc
 
     def create(self, timerId, seconds, repeat=False):
         self.timers.append([timerId, seconds, repeat])
@@ -148,15 +123,17 @@ class MyTimerThreading:
 
         self.tid += 1
 
+        self.npc.say("create timer %d successfully" % (timerId))
+
     def start(self, timerId):
-        timerId = self.map[timerId]
-        status = self.alive.get(self.workertid[timerId])
+        timer_id = self.map[timerId]
+        status = self.alive.get(self.workertid[timer_id])
         # worker thread deleted
         if status is None:
-            self.workertid[timerId] = self.tid
+            self.workertid[timer_id] = self.tid
             self.alive[self.tid] = True
             thread = threading.Thread(
-                target=self.timer_thread, args=(self.tid, timerId)
+                target=self.timer_thread, args=(self.tid, timer_id)
             )
             thread.daemon = True
             thread.start()
@@ -164,9 +141,9 @@ class MyTimerThreading:
             self.tid += 1
 
         else:
-            if self.isRunning[timerId] is False:
-                self.sems_start[timerId].release()
-                self.isRunning[timerId] = True
+            if self.isRunning[timer_id] is False:
+                self.sems_start[timer_id].release()
+                self.isRunning[timer_id] = True
 
     def stop(self, timerId):
         timerId = self.map[timerId]
@@ -187,7 +164,7 @@ class MyTimerThreading:
             # wait for lock
             timer_id = self.map[timerId]
             self.sems_start[timer_id].acquire()
-
+            self.npc.say("start timer %d" % (timerId))
             time.sleep(self.timers[timer_id][1])
 
             status = self.alive.get(tid)
