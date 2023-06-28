@@ -1,3 +1,4 @@
+import math
 import threading
 import time
 
@@ -38,7 +39,23 @@ class Entity:
     def __init__(self, _char):
         self.char = _char
         self.char.npc.say("Initialized!")
-        self.Timer = MyTimerThreading(self.timer, self.char.npc)
+        self.Timer = MyTimer(_char.npc.getTimers())
+        self.SkillTree = SkillTree()
+
+        self.SkillTree.regReset(self.recover)
+
+        # self.SkillTree.regSkill("Alarm", lambda: None, lambda: True, lambda: 2)
+        self.SkillTree.regSkill(
+            "Start", self.strengthen, self.char.npc.isAttacking, lambda: 2, lambda: 3
+        )
+        self.SkillTree.regSkill(
+            "Interval",
+            self.recover,
+            self.char.npc.isAttacking,
+            lambda: 0,
+            lambda: 7,
+            "Start",
+        )
 
         # define timerId
         self.timerAlarm = 1
@@ -46,13 +63,15 @@ class Entity:
         self.timerInterval = 3
         self.timerHang = 4
 
-        self.Timer.create(self.timerAlarm, 2, False)
-        self.Timer.create(self.timerDuration, 3, False)
-        self.Timer.create(self.timerInterval, 7, False)
-        self.Timer.create(self.timerHang, 5, False)
+        self.Timer.add(self.timerAlarm, 40, False)
+        self.Timer.add(self.timerDuration, 60, False)
+        self.Timer.add(self.timerInterval, 140, False)
+        self.Timer.add(self.timerHang, 100, False)
 
         self.GoldSword = _char.npc.world.createItem("minecraft:golden_sword", 0, 1)
         self.Air = _char.npc.world.createItem("minecraft:air", 0, 1)
+
+        self.SkillTree.startCycle()
 
     def interact(self):
         pass
@@ -62,119 +81,161 @@ class Entity:
 
     def target(self):
         self.Timer.start(self.timerAlarm)
-        self.char.npc.say("alarm")
+        # self.char.npc.say("警告:即将发动技能“癫狂连击”")
         # do something
 
     def targetLost(self):
-        self.Timer.start(self.timerHang)
+        # self.Timer.start(self.timerHang)
         # do something
+        pass
+
+    def strengthen(self):
+        self.char.npc.stats.melee.setStrength(6)
+        self.char.npc.stats.melee.setDelay(4)
+        self.char.npc.inventory.setLeftHand(self.GoldSword)
+        self.circleExplode(1, "lava")
+
+    def recover(self):
+        self.char.npc.stats.melee.setStrength(7)
+        self.char.npc.stats.melee.setDelay(16)
+        self.char.npc.inventory.setLeftHand(self.Air)
 
     def skill_rage(self, timer_id):
         # Alarm ends
-        # self.Timer.finish(timer_id)
+        self.Timer.finish(timer_id)
         if timer_id == self.timerAlarm:
-            self.char.npc.say("raging")
+            # self.char.npc.say("发动技能“癫狂连击”")
             self.Timer.start(self.timerDuration)
             # Strengthen
+            self.strengthen()
 
         # Interval ends
         if timer_id == self.timerInterval:
+            # 偷懒直接调用target(),反正效果一样（逃
             if self.char.npc.isAttacking():
-                self.Timer.start(self.timerAlarm)
-                self.char.npc.say("alarm")
+                self.target()
 
         # Duration ends
         if timer_id == self.timerDuration:
-            self.char.npc.say("stop")
+            # self.char.npc.say("“癫狂连击”结束")
             if self.char.npc.isAttacking():
                 self.Timer.start(self.timerInterval)
+            self.recover()
 
         # Hang ends
         if timer_id == self.timerHang:
             if not self.char.npc.isAttacking():
-                self.char.npc.say("start hanging")
-                self.Timer.stopAll()
+                self.recover()
+                self.Timer.clear()
+
+    def circleExplode(self, radius, particle):
+        thisX = self.char.npc.getX()
+        thisY = self.char.npc.getY()
+        thisZ = self.char.npc.getZ()
+        for i in range(0, 360, 5):
+            rad = i * math.pi / 180
+            dx = math.cos(rad)
+            dz = math.sin(rad)
+            self.char.npc.world.spawnParticle(
+                particle, thisX, thisY + 1, thisZ, dx, 0, dz, 0.01, 5
+            )
 
 
-class MyTimerThreading:
-    def __init__(self, callback, npc):
-        self.callback = callback
-        self.map = {}
+class MyTimer:
+    def __init__(self, timer):
+        self.Timer = timer
         self.timers = []
         self.isRunning = []
-        self.alive = {}
-        self.sems_start = []
-        self.workertid = []
-        self.tid = 0
 
-        self.npc = npc
+    # Add a timer
+    def add(self, timerId, ticks, repeat=False):
+        while timerId >= len(self.timers):
+            self.timers.append([0, 0, 0])
+            self.isRunning.append(False)
+        self.timers[timerId] = [timerId, ticks, repeat]
 
-    def create(self, timerId, seconds, repeat=False):
-        self.timers.append([timerId, seconds, repeat])
-        self.alive[self.tid] = True
-        self.sems_start.append(threading.Semaphore(0))
-        self.isRunning.append(False)
-        self.workertid.append(self.tid)
-        self.map[timerId] = len(self.timers) - 1
+    def start(self, timerId):
+        if not self.isRunning[timerId]:
+            self.isRunning[timerId] = True
+            self.Timer.start(*self.timers[timerId])
 
-        thread = threading.Thread(target=self.timer_thread, args=(self.tid, timerId))
+    def finish(self, timerId):
+        self.isRunning[timerId] = False
+
+    def stop(self, timerId):
+        self.Timer.stop(timerId)
+        self.isRunning[timerId] = False
+
+    def clear(self):
+        self.Timer.clear()
+        for i in range(0, len(self.isRunning)):
+            self.isRunning[i] = False
+
+    def modify(self, timerId, ticks, repeat):
+        self.timers[timerId] = [timerId, ticks, repeat]
+
+
+class SkillNode:
+    def __init__(self, skillName, skillEffect, skillCond, skillPrev, skillDuration):
+        self.skillName = skillName
+        self.skillEffect = skillEffect
+        self.skillCond = skillCond
+        self.skillPrev = skillPrev
+        self.skillDuration = skillDuration
+
+        self.child = []
+
+
+class SkillTree:
+    def __init__(self):
+        self.root = SkillNode("", None, None, None, None)
+
+    def startCycle(self):
+        thread = threading.Thread(target=self.thread_skill)
         thread.daemon = True
         thread.start()
 
-        self.tid += 1
-
-        self.npc.say("create timer %d successfully" % (timerId))
-
-    def start(self, timerId):
-        timer_id = self.map[timerId]
-        status = self.alive.get(self.workertid[timer_id])
-        # worker thread deleted
-        if status is None:
-            self.workertid[timer_id] = self.tid
-            self.alive[self.tid] = True
-            thread = threading.Thread(
-                target=self.timer_thread, args=(self.tid, timer_id)
-            )
-            thread.daemon = True
-            thread.start()
-
-            self.tid += 1
-
+    def regSkill(
+        self, skillName, skillEffect, skillCond, skillPrev, skillDuration, deriveFrom=""
+    ):
+        newSkill = SkillNode(
+            skillName, skillEffect, skillCond, skillPrev, skillDuration
+        )
+        derive = self.find(self.root, deriveFrom)
+        if derive is not None:
+            derive.child.append(newSkill)
+            return True
         else:
-            if self.isRunning[timer_id] is False:
-                self.sems_start[timer_id].release()
-                self.isRunning[timer_id] = True
+            return False
 
-    def stop(self, timerId):
-        timerId = self.map[timerId]
-        del self.alive[self.workertid[timerId]]
-        self.isRunning[timerId] = False
+    def regReset(self, resetFunc):
+        self.reset = resetFunc
 
-    def modify(self, timerId, seconds, repeat):
-        timerId = self.map[timerId]
-        self.timers[timerId] = [seconds, repeat]
-        pass
+    def find(self, node, name):
+        if node.skillName == name:
+            return node
+        else:
+            for child in node.child:
+                found = self.find(child, name)
+                if found is not None:
+                    return found
+        return None
 
-    def stopAll(self):
-        for timerId, sec, rep in self.timers:
-            self.stop(timerId)
-
-    def timer_thread(self, tid, timerId):
+    def thread_skill(self):
+        nowSkill = self.root
         while True:
-            # wait for lock
-            timer_id = self.map[timerId]
-            self.sems_start[timer_id].acquire()
-            self.npc.say("start timer %d" % (timerId))
-            time.sleep(self.timers[timer_id][1])
+            # reach leaf
+            if 0 == len(nowSkill.child):
+                nowSkill = self.root
 
-            status = self.alive.get(tid)
-            if status is None:
-                return
-
-            # repeat
-            if self.timers[timer_id][2]:
-                self.sems_start[timer_id].release()
-            else:
-                self.isRunning = False
-
-            self.callback(timerId)
+            for child in nowSkill.child:
+                if child.skillCond():
+                    time.sleep(child.skillPrev())
+                    if child.skillCond():
+                        child.skillEffect()
+                        time.sleep(child.skillDuration())
+                        nowSkill = child
+                    else:
+                        nowSkill = self.root
+                        self.reset()
+                    break

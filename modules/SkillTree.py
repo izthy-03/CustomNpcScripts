@@ -3,27 +3,32 @@ import time
 
 
 class SkillNode:
-    def __init__(self, skillName, skillEffect, skillCond, skillTime):
+    def __init__(self, skillName, skillEffect, skillCond, skillPrev, skillDuration):
         self.skillName = skillName
         self.skillEffect = skillEffect
         self.skillCond = skillCond
-        self.skillTime = skillTime
+        self.skillPrev = skillPrev
+        self.skillDuration = skillDuration
 
         self.child = []
 
 
 class SkillTree:
     def __init__(self):
-        self.root = SkillNode("", None, None)
+        self.root = SkillNode("", None, None, None, None)
 
     def startCycle(self):
         thread = threading.Thread(target=self.thread_skill)
         thread.daemon = True
         thread.start()
 
-    def regSkill(self, skillName, skillEffect, skillCond, skillTime, deriveFrom=""):
-        newSkill = SkillNode(skillName, skillEffect, skillCond, skillTime)
-        derive = self.find(deriveFrom)
+    def regSkill(
+        self, skillName, skillEffect, skillCond, skillPrev, skillDuration, deriveFrom=""
+    ):
+        newSkill = SkillNode(
+            skillName, skillEffect, skillCond, skillPrev, skillDuration
+        )
+        derive = self.find(self.root, deriveFrom)
         if derive is not None:
             derive.child.append(newSkill)
             return True
@@ -52,9 +57,10 @@ class SkillTree:
 
             for child in nowSkill.child:
                 if child.skillCond():
-                    time.sleep(child.skillTime())
+                    time.sleep(child.skillPrev())
                     if child.skillCond():
                         child.skillEffect()
+                        time.sleep(child.skillDuration())
                         nowSkill = child
                     else:
                         nowSkill = self.root
